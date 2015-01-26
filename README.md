@@ -13,3 +13,9 @@ Config
   "LogBody": false // Do we want to record the response body as well?
 }
 ```
+
+Run
+---
+```
+go run meleon.go
+```
