@@ -43,6 +43,8 @@ func proxyRequest(w http.ResponseWriter, r *http.Request, c Config) {
   switch r.Method {
     case "GET":
       handleGET(w, r, c)
+    case "POST":
+      handlePOST(w, r, c)
   }
 }
 
@@ -52,7 +54,25 @@ func recordRequest(r *http.Request, c Config) {
   for k, _ := range r.Header {
     fmt.Printf("> %s: %s\n", k, r.Header[k])
   }
+
+  if c.LogBody {
+    switch r.Method {
+    case "POST":
+      recordRequestBody(r)
+    }
+  }
+
   fmt.Println()
+}
+
+func recordRequestBody(r *http.Request) {
+  body, err := ioutil.ReadAll(r.Body)
+  if err != nil {
+    panic(fmt.Sprintf("%v", err))
+    return
+  }
+
+  fmt.Printf("\n%v\n", string(body))
 }
 
 func recordResponse(r *http.Response, body string, c Config) {
@@ -70,6 +90,35 @@ func recordResponse(r *http.Response, body string, c Config) {
 func handleGET(w http.ResponseWriter, r *http.Request, c Config) {
   reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
   resp, err := http.Get(reqURL)
+  if err != nil {
+    panic(fmt.Sprintf("%v", err))
+    return
+  }
+  defer resp.Body.Close()
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    panic(fmt.Sprintf("%v", err))
+    return
+  }
+
+  recordResponse(resp, string(body), c)
+
+  // Copy headers
+  cRespHeader := w.Header()
+  for k, _ := range resp.Header {
+    cRespHeader[k] = resp.Header[k]
+  }
+
+  // Set status code
+  w.WriteHeader(resp.StatusCode)
+
+  // Send the response back to the client
+  w.Write(body)
+}
+
+func handlePOST(w http.ResponseWriter, r *http.Request, c Config) {
+  reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
+  resp, err := http.Post(reqURL, "", nil)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
     return
