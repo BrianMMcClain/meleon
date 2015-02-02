@@ -16,6 +16,8 @@ type Config struct {
 func main() {
   c := readConfig()
 
+  // We are an invisible proxy, so we will handle all requests the same way:
+  // Read the request from the client, record it, and pass it along as intended
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     proxyRequest(w, r, c)
   })
@@ -48,6 +50,8 @@ func proxyRequest(w http.ResponseWriter, r *http.Request, c Config) {
   }
 }
 
+// Record the method, headers, address and potentially the
+// body of the reqest
 func recordRequest(r *http.Request, c Config) {
   fmt.Println("--------------------------------------------------------------------")
   fmt.Printf("> %s %s\n", r.Method, r.RequestURI)
@@ -65,6 +69,7 @@ func recordRequest(r *http.Request, c Config) {
   fmt.Println()
 }
 
+// Read the request body and record it
 func recordRequestBody(r *http.Request) {
   body, err := ioutil.ReadAll(r.Body)
   if err != nil {
@@ -87,6 +92,9 @@ func recordResponse(r *http.Response, body string, c Config) {
   fmt.Println()
 }
 
+// GET requests are extremely straight-forward. We will receive the request,
+// do all processing that we need to on our side, and pass the request along
+// without modification
 func handleGET(w http.ResponseWriter, r *http.Request, c Config) {
   reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
   resp, err := http.Get(reqURL)
@@ -116,8 +124,11 @@ func handleGET(w http.ResponseWriter, r *http.Request, c Config) {
   w.Write(body)
 }
 
+// POST requests only have the extra step of ensuring that we read the POST
+// body from the request and pass it along as intended, unmodified
 func handlePOST(w http.ResponseWriter, r *http.Request, c Config) {
   reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
+  // TODO: Read the request body and send it in the request
   resp, err := http.Post(reqURL, "", nil)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
