@@ -14,6 +14,8 @@ Config
 }
 ```
 
+See meleon.json.example for an example of this config
+
 Run
 ---
 ```
