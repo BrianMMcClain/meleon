@@ -6,6 +6,7 @@ import (
   "io/ioutil"
   "os"
   "encoding/json"
+  "time"
 ) 
 
 type Config struct {
@@ -13,13 +14,25 @@ type Config struct {
   LogBody bool
 }
 
+type Transaction struct {
+  Timestamp time.Time
+  Request *http.Request
+  Response *http.Response
+}
+
 func main() {
   c := readConfig()
+
+  transactionLog := make([]Transaction, 0)
 
   // We are an invisible proxy, so we will handle all requests the same way:
   // Read the request from the client, record it, and pass it along as intended
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    proxyRequest(w, r, c)
+    r.Host = c.RemoteHost
+    transaction := proxyRequest(w, r, c)
+    transactionLog = append(transactionLog, transaction)
+    // b, _ := json.Marshal(transactionLog)
+    // fmt.Println(string(b))
   })
   http.ListenAndServe(":9999", nil)
 }
@@ -40,14 +53,23 @@ func readConfig() Config {
   return config
 }
 
-func proxyRequest(w http.ResponseWriter, r *http.Request, c Config) {
+func proxyRequest(w http.ResponseWriter, r *http.Request, c Config) Transaction {
   recordRequest(r, c)
   switch r.Method {
     case "GET":
-      handleGET(w, r, c)
+      resp := handleGET(w, r, c)
+      return recordTransaction(r, resp)
     case "POST":
-      handlePOST(w, r, c)
+      resp := handlePOST(w, r, c)
+      return recordTransaction(r, resp)
   }
+
+  return Transaction{time.Now(), nil, nil}
+}
+
+func recordTransaction(req *http.Request, resp *http.Response) Transaction {
+  t := Transaction{time.Now(), req, resp}
+  return t
 }
 
 // Record the method, headers, address and potentially the
@@ -95,18 +117,18 @@ func recordResponse(r *http.Response, body string, c Config) {
 // GET requests are extremely straight-forward. We will receive the request,
 // do all processing that we need to on our side, and pass the request along
 // without modification
-func handleGET(w http.ResponseWriter, r *http.Request, c Config) {
+func handleGET(w http.ResponseWriter, r *http.Request, c Config) *http.Response {
   reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
   resp, err := http.Get(reqURL)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
-    return
+    return nil
   }
   defer resp.Body.Close()
   body, err := ioutil.ReadAll(resp.Body)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
-    return
+    return nil
   }
 
   recordResponse(resp, string(body), c)
@@ -122,23 +144,25 @@ func handleGET(w http.ResponseWriter, r *http.Request, c Config) {
 
   // Send the response back to the client
   w.Write(body)
+
+  return resp
 }
 
 // POST requests only have the extra step of ensuring that we read the POST
 // body from the request and pass it along as intended, unmodified
-func handlePOST(w http.ResponseWriter, r *http.Request, c Config) {
+func handlePOST(w http.ResponseWriter, r *http.Request, c Config) *http.Response {
   reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
   // TODO: Read the request body and send it in the request
   resp, err := http.Post(reqURL, "", nil)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
-    return
+    return nil
   }
   defer resp.Body.Close()
   body, err := ioutil.ReadAll(resp.Body)
   if err != nil {
     panic(fmt.Sprintf("%v", err))
-    return
+    return nil
   }
 
   recordResponse(resp, string(body), c)
@@ -154,4 +178,6 @@ func handlePOST(w http.ResponseWriter, r *http.Request, c Config) {
 
   // Send the response back to the client
   w.Write(body)
+
+  return resp
 }
