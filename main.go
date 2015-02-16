@@ -25,10 +25,8 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.Host = c.RemoteHost
 		transaction := proxyRequest(w, r, c)
-		fmt.Println(transaction)
+		//fmt.Println(transaction)
 		transactionLog = append(transactionLog, transaction)
-		// b, _ := json.Marshal(transactionLog)
-		// fmt.Println(string(b))
 	})
 	http.ListenAndServe(":9999", nil)
 }
