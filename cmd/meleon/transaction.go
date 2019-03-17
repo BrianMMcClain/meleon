@@ -1,4 +1,4 @@
-package transaction
+package main
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ func NewTransaction(req *http.Request, resp *http.Response, body string) Transac
 func (t Transaction) String() string {
 	// Request Method and URI
 	outS := fmt.Sprintf("> %s %s\n", t.Request.Method, t.Request.RequestURI)
-	for k, _ := range t.Request.Header {
+	for k := range t.Request.Header {
 		outS += fmt.Sprintf("> %s: %s\n", k, t.Request.Header[k])
 	}
 
@@ -31,17 +31,16 @@ func (t Transaction) String() string {
 		body, err := ioutil.ReadAll(t.Request.Body)
 		if err != nil {
 			panic(fmt.Sprintf("%v", err))
-			return ""
 		}
 
 		outS += fmt.Sprintf("\n%v\n", string(body))
 	}
 
-	outS += "\n" // Newlinr for formatting
+	outS += "\n" // Newline for formatting
 
 	// Response
 	outS += fmt.Sprintf("< %s\n", t.Response.Status)
-	for k, _ := range t.Response.Header {
+	for k := range t.Response.Header {
 		outS += fmt.Sprintf("< %s: %s\n", k, t.Response.Header[k])
 	}
 

@@ -6,11 +6,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-
-	"github.com/brianmmcclain/meleon/transaction"
 )
 
-type Config struct {
+type config struct {
 	RemoteHost string
 	LogBody    bool
 }
@@ -18,7 +16,7 @@ type Config struct {
 func main() {
 	c := readConfig()
 
-	transactionLog := make([]transaction.Transaction, 0)
+	transactionLog := make([]Transaction, 0)
 
 	// We are an invisible proxy, so we will handle all requests the same way:
 	// Read the request from the client, record it, and pass it along as intended
@@ -31,14 +29,14 @@ func main() {
 	http.ListenAndServe(":9999", nil)
 }
 
-func readConfig() Config {
+func readConfig() config {
 	file, err := os.Open("meleon.json")
 	if err != nil {
 		panic(err)
 	}
 
 	decoder := json.NewDecoder(file)
-	config := Config{}
+	config := config{}
 	err = decoder.Decode(&config)
 	if err != nil {
 		panic(err)
@@ -47,24 +45,24 @@ func readConfig() Config {
 	return config
 }
 
-func proxyRequest(w http.ResponseWriter, r *http.Request, c Config) transaction.Transaction {
+func proxyRequest(w http.ResponseWriter, r *http.Request, c config) Transaction {
 	switch r.Method {
 	case "GET":
 		resp, body := handleGET(w, r, c)
-		return transaction.NewTransaction(r, resp, body)
+		return NewTransaction(r, resp, body)
 		//return recordTransaction(r, resp)
 	case "POST":
 		resp, body := handlePOST(w, r, c)
-		return transaction.NewTransaction(r, resp, body)
+		return NewTransaction(r, resp, body)
 	}
 
-	return transaction.NewTransaction(nil, nil, "")
+	return NewTransaction(nil, nil, "")
 }
 
 // GET requests are extremely straight-forward. We will receive the request,
 // do all processing that we need to on our side, and pass the request along
 // without modification
-func handleGET(w http.ResponseWriter, r *http.Request, c Config) (*http.Response, string) {
+func handleGET(w http.ResponseWriter, r *http.Request, c config) (*http.Response, string) {
 	reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
 	resp, err := http.Get(reqURL)
 	if err != nil {
@@ -89,7 +87,7 @@ func handleGET(w http.ResponseWriter, r *http.Request, c Config) (*http.Response
 
 // POST requests only have the extra step of ensuring that we read the POST
 // body from the request and pass it along as intended, unmodified
-func handlePOST(w http.ResponseWriter, r *http.Request, c Config) (*http.Response, string) {
+func handlePOST(w http.ResponseWriter, r *http.Request, c config) (*http.Response, string) {
 	reqURL := fmt.Sprintf("%s%s", c.RemoteHost, r.RequestURI)
 	// TODO: Read the request body and send it in the request
 	resp, err := http.Post(reqURL, "", nil)
