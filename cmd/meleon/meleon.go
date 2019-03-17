@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 )
@@ -23,7 +24,7 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.Host = c.RemoteHost
 		transaction := proxyRequest(w, r, c)
-		//fmt.Println(transaction)
+		log.Println(transaction)
 		transactionLog = append(transactionLog, transaction)
 	})
 	http.ListenAndServe(":9999", nil)
