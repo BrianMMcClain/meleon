@@ -19,5 +19,6 @@ See meleon.json.example for an example of this config
 Run
 ---
 ```
-go run meleon.go
+make
+./meleon
 ```
